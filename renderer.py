@@ -114,6 +114,20 @@ def render_video(episode_file: str, output_file: str = None, temp_directory: str
     print(" ".join(cmd.arguments))
     cmd.execute()
 
+    text_filters = []
+    for overlay in episode_data["textOverlays"]:
+        text = overlay["text"]
+        start = overlay["appearance"]["start"]
+        end = overlay["appearance"]["end"]
+
+        text_filters += [
+            f"drawtext=text='{text}':x=(w-text_w)/2:y=h-40:fontcolor=white:fontsize=24:enable='between(t,{start},{end})'"
+        ]
+
+    kwargs = {}
+    if text_filters:
+        kwargs["vf"] = f"[in]{','.join(text_filters)}[out]"
+
     # ffmpeg -i output.mp4 -i music.mp3 -stream_loop -1 -map 0:v -map 1:a -c:v copy -shortest final_output.mp4
     cmd = (
         FFmpeg()
@@ -123,13 +137,15 @@ def render_video(episode_file: str, output_file: str = None, temp_directory: str
         .output(
             output_file,
             {
-                "c:v": "copy",
-                "c:a": "aac"
+                "c:v": "libx264",
+                "c:a": "aac",
+                **kwargs
             },
             filter_complex="[0:a][1:a]amix=inputs=2:duration=longest",
             shortest=None
         )
     )
+    print(" ".join(cmd.arguments))
     cmd.execute()
 
 
