@@ -60,7 +60,7 @@ def render_video(
         scene_file_path = os.path.join(temp_directory, scene_file)
         audio_duration = _length_of_media(scene_audio_file)
 
-        fade_length = min(1, audio_duration / 3)
+        fade_length = min(0.5, audio_duration / 3)
 
         video_filter = []
 
