@@ -49,6 +49,8 @@ def render_video(
 
     upscale_resolution = Resolution(*(x * 4 for x in video_resolution))
 
+    fade_out = False
+
     for scene_number, scene in enumerate(episode_data["scenes"]):
         print(f"Generate Scene #{scene_number}")
 
@@ -57,6 +59,13 @@ def render_video(
         scene_file = f"scene{scene_number}.mp4"
         scene_file_path = os.path.join(temp_directory, scene_file)
         audio_duration = _length_of_media(scene_audio_file)
+
+        fade_length = min(1, audio_duration / 3)
+
+        video_filter = []
+
+        cmd = FFmpeg().option("y")
+
         if scene["type"] == "image":
             # scene_duration = int(scene["content"]["duration"])
 
@@ -64,58 +73,53 @@ def render_video(
             zoom_level = 1.2
             zoom_per_frame = min(zoom_level / frame_count, 0.0001)
 
+            video_filter += [
+                f"scale={upscale_resolution}",
+                f"zoompan=z='zoom+{zoom_per_frame}':d={frame_count}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={video_resolution}"
+            ]
+
             # ./ffmpeg -loop 1 -i .\episode1\image1.png -c:v libx264 -t 10 -pix_fmt yuv420p output.mp4
-            cmd = (
-                FFmpeg()
-                .option("y")
-                .option("loop", "1")
-                .input(scene_source_file)
-                .input(scene_audio_file)
-                .output(
-                    scene_file_path,
-                    {
-                        "c:v": "libx264",
-                        "c:a": "aac",
-                        "b:a": "192k",
-                    },
-                    ac=2,
-                    ar=44100,
-                    # t=scene_duration,
-                    tune="stillimage",
-                    pix_fmt="yuv420p",
-                    vf=f"scale={upscale_resolution},zoompan=z='zoom+{zoom_per_frame}':d={frame_count}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={video_resolution}",
-                    r=framerate,
-                    map=["0:v", "1:a"],
-                    shortest=None,
-                )
-            )
+            cmd = cmd.option("loop", 1)
         elif scene["type"] == "video":
             video_duration = _length_of_media(scene_source_file)
-
-            cmd = (
-                FFmpeg()
-                .option("y")
-                .input(scene_source_file)
-                .input(scene_audio_file)
-                .output(
-                    scene_file_path,
-                    {
-                        "c:v": "libx264",
-                        "c:a": "aac",
-                        "b:a": "192k",
-                    },
-                    ac=2,
-                    ar=44100,
-                    # t=scene_duration,
-                    pix_fmt="yuv420p",
-                    vf=f"setpts=({audio_duration}/{video_duration})*PTS,scale={video_resolution}",
-                    r=framerate,
-                    map=["0:v", "1:a"],
-                    shortest=None,
-                )
-            )
+            video_filter += [
+                f"setpts=({audio_duration}/{video_duration})*PTS",
+                f"scale={video_resolution}"
+            ]
         else:
             raise Exception(f"Unknown type {scene['type']}")
+
+        # Previous scene faded out
+        if fade_out:
+            video_filter += [f"fade=t=in:st=0:d={fade_length}"]
+
+        fade_out = scene.get("fade_out", False)
+
+        # Current scene fades out
+        if fade_out:
+            video_filter += [f"fade=t=out:st={audio_duration - fade_length}:d={fade_length}"]
+
+        cmd = (
+            cmd
+            .input(scene_source_file)
+            .input(scene_audio_file)
+            .output(
+                scene_file_path,
+                {
+                    "c:v": "libx264",
+                    "c:a": "aac",
+                    "b:a": "192k",
+                },
+                ac=2,
+                ar=44100,
+                # t=scene_duration,
+                pix_fmt="yuv420p",
+                vf=",".join(video_filter),
+                r=framerate,
+                map=["0:v", "1:a"],
+                shortest=None,
+            )
+        )
 
         print(" ".join(cmd.arguments))
         cmd.execute()

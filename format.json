@@ -11,7 +11,8 @@
 				"audio": {
 					"filename": "string (optional)"
 				}
-			}
+			},
+			"fade_out": "bool (optional)"
 		}
 	],
 	"textOverlays": [
