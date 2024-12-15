@@ -47,8 +47,13 @@ def render_video(
         scene_audio_file = scene["content"]["audio"]["filename"]
         scene_file = f"scene{scene_number}.mp4"
         scene_file_path = os.path.join(temp_directory, scene_file)
+        audio_duration = _length_of_media(scene_audio_file)
         if scene["type"] == "image":
             # scene_duration = int(scene["content"]["duration"])
+
+            frame_count = int(audio_duration * 25) + 1
+            zoom_level = 1.2
+            zoom_per_frame = min(zoom_level / frame_count, 0.0001)
 
             # ./ffmpeg -loop 1 -i .\episode1\image1.png -c:v libx264 -t 10 -pix_fmt yuv420p output.mp4
             cmd = (
@@ -69,7 +74,7 @@ def render_video(
                     # t=scene_duration,
                     tune="stillimage",
                     pix_fmt="yuv420p",
-                    vf="scale=" + video_resolution,
+                    vf=f"zoompan=z='zoom+{zoom_per_frame}':d={frame_count}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={video_resolution}",
                     r=framerate,
                     map=["0:v", "1:a"],
                     shortest=None,
@@ -77,7 +82,6 @@ def render_video(
             )
         elif scene["type"] == "video":
             video_duration = _length_of_media(scene_source_file)
-            audio_duration = _length_of_media(scene_audio_file)
 
             cmd = (
                 FFmpeg()
