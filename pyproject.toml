@@ -7,10 +7,20 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.13"
-replicate = "^1.0.4"
 python-dotenv = "^1.0.1"
 openai = "^1.57.4"
+elevenlabs = "^1.50.2"
+lumaai = "^1.2.1"
+replicate = "^1.0.4"
+requests = "^2.32.3"
+types-requests = "^2.32.0.20241016"
+pydantic = "^2.10.3"
+tqdm = "^4.67.1"
+boto3 = "^1.35.81"
 
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.29.5"
 
 [build-system]
 requires = ["poetry-core"]
