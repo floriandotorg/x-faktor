@@ -23,7 +23,7 @@ def render_video(episode_file: str, output_file: str = None, temp_directory: str
 
     scene_files = []
 
-    os.mkdir(temp_directory)
+    os.makedirs(temp_directory, exist_ok=True)
 
     for scene_number, scene in enumerate(episode_data["scenes"]):
         print(f"Generate Scene #{scene_number}")
