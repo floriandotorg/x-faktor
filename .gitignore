@@ -1,9 +1,10 @@
 content/*
 !content/.gitkeep
-generated-episode
+generated-episode*
 background.mp3
 episode*.json
 episode*.mp4
+*.log
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
