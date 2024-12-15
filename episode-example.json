@@ -1,0 +1,38 @@
+{
+	"backgroundMusic": {
+		"filename": "episode1/background.mp3"
+	},
+	"scenes": [
+		{
+			"type": "image",
+			"content": {
+				"filename": "episode1/image1.png",
+				"duration": 3,
+                "audio": {
+                    "filename": "episode1/scene1.mp3"
+                }
+			}
+		},
+		{
+			"type": "image",
+			"content": {
+				"filename": "episode1/image2.png",
+				"duration": 5,
+                "audio": {
+                    "filename": "episode1/scene2.mp3"
+                }
+			}
+		},
+        {
+            "type": "video",
+            "content": {
+                "filename": "episode1/scene3.mp4",
+                "audio": {
+                    "filename": "episode1/scene3.mp3"
+                }
+            }
+        }
+	],
+	"textOverlays": [],
+	"soundEffects": []
+}
