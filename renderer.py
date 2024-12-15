@@ -149,9 +149,11 @@ def render_video(
             f"drawtext=textfile='{overlay_file}':x=(w-text_w)/2:y=h-80-text_h:fontcolor=white:fontsize=48:font=Times New Roman:alpha='if(lte(t,{start+1}), (t-{start})/{1}, if(gte(t,{end-1}), ({end}-t)/{1}, 1))'"
         ]
 
-    kwargs = {}
+    total_duration = _length_of_media(episode_silent_file)
+    fade_length = 1
+
     if text_filters:
-        kwargs["vf"] = f"[in]{','.join(text_filters)}[out]"
+        text_filters = f"[in]{','.join(text_filters)}[out]"
 
     # ffmpeg -i output.mp4 -i music.mp3 -stream_loop -1 -map 0:v -map 1:a -c:v copy -shortest final_output.mp4
     cmd = (
@@ -161,8 +163,9 @@ def render_video(
         .input(episode_data["backgroundMusic"]["filename"], stream_loop=-1)
         .output(
             output_file,
-            {"c:v": "libx264", "c:a": "aac", **kwargs},
-            filter_complex=f"[1:a]volume={background_volume}[bga];[0:a][bga]amix=inputs=2:duration=longest",
+            {"c:v": "libx264", "c:a": "aac"},
+            vf=f"fade=t=out:st={total_duration - fade_length}:d={fade_length}",
+            filter_complex=f"[1:a]volume={background_volume},afade=t=out:st={total_duration - fade_length}:d={fade_length}[bga];[0:a][bga]amix=inputs=2:duration=longest",
             shortest=None,
         )
     )
