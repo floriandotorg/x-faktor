@@ -9,6 +9,19 @@ framerate = 25
 background_volume = 0.5
 
 
+def _length_of_media(media_file: str) -> float:
+    ffprobe = FFmpeg(executable="ffprobe").input(
+        media_file,
+        v="error",
+        show_entries="format=duration",
+        of="csv=p=0",
+    )
+
+    #print(" ".join(ffprobe.arguments))
+    duration = ffprobe.execute().decode("ASCII")
+    return float(duration.rstrip())
+
+
 def render_video(
     episode_file: str, output_file: str = None, temp_directory: str = None
 ) -> None:
@@ -31,6 +44,7 @@ def render_video(
         print(f"Generate Scene #{scene_number}")
 
         scene_source_file = scene["content"]["filename"]
+        scene_audio_file = scene["content"]["audio"]["filename"]
         scene_file = f"scene{scene_number}.mp4"
         scene_file_path = os.path.join(temp_directory, scene_file)
         if scene["type"] == "image":
@@ -42,7 +56,7 @@ def render_video(
                 .option("y")
                 .option("loop", "1")
                 .input(scene_source_file)
-                .input(scene["content"]["audio"]["filename"])
+                .input(scene_audio_file)
                 .output(
                     scene_file_path,
                     {
@@ -62,11 +76,14 @@ def render_video(
                 )
             )
         elif scene["type"] == "video":
+            video_duration = _length_of_media(scene_source_file)
+            audio_duration = _length_of_media(scene_audio_file)
+
             cmd = (
                 FFmpeg()
                 .option("y")
-                .input(scene_source_file, stream_loop=-1)
-                .input(scene["content"]["audio"]["filename"])
+                .input(scene_source_file)
+                .input(scene_audio_file)
                 .output(
                     scene_file_path,
                     {
@@ -78,7 +95,7 @@ def render_video(
                     ar=44100,
                     # t=scene_duration,
                     pix_fmt="yuv420p",
-                    vf="scale=" + video_resolution,
+                    vf=f"setpts=({audio_duration}/{video_duration})*PTS,scale={video_resolution}",
                     r=framerate,
                     map=["0:v", "1:a"],
                     shortest=None,
