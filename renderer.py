@@ -50,6 +50,9 @@ def render_video(
     upscale_resolution = Resolution(*(x * 4 for x in video_resolution))
 
     fade_out = False
+    for scene in episode_data["scenes"]:
+        scene["fade_in"] = fade_out
+        fade_out = scene.setdefault("fade_out", False)
 
     for scene_number, scene in enumerate(episode_data["scenes"]):
         print(f"Generate Scene #{scene_number}")
@@ -94,13 +97,11 @@ def render_video(
             raise Exception(f"Unknown type {scene['type']}")
 
         # Previous scene faded out
-        if fade_out:
+        if scene["fade_in"]:
             video_filter += [f"fade=t=in:st=0:d={fade_length}"]
 
-        fade_out = scene.get("fade_out", False)
-
         # Current scene fades out
-        if fade_out:
+        if scene["fade_out"]:
             video_filter += [f"fade=t=out:st={audio_duration - fade_length}:d={fade_length}"]
 
         cmd = (
