@@ -1,0 +1,32 @@
+{
+	"backgroundMusic": {
+		"filename": "string"
+	},
+	"scenes": [
+		{
+			"type": "video | image",
+			"content": {
+				"filename": "string",
+				"duration": "number (seconds, optional for video, mandatory for image)",
+				"audio": {
+					"filename": "string (optional)"
+				}
+			}
+		}
+	],
+	"textOverlays": [
+		{
+			"text": "string",
+			"appearance": {
+				"start": "number (seconds)",
+				"end": "number (seconds)"
+			}
+		}
+	],
+	"soundEffects": [
+		{
+			"filename": "string",
+			"start": "number (seconds)"
+		}
+	]
+}
