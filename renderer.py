@@ -1,8 +1,7 @@
-from ffmpeg import FFmpeg
 import json
 import os
 
-
+from ffmpeg import FFmpeg
 
 video_resolution = "1920:1080"
 video_resolution = "1280:720"
@@ -10,13 +9,15 @@ framerate = 25
 background_volume = 0.5
 
 
-def render_video(episode_file: str, output_file: str = None, temp_directory: str = None) -> None:
+def render_video(
+    episode_file: str, output_file: str = None, temp_directory: str = None
+) -> None:
     with open(episode_file, "r") as f:
         episode_data = json.load(f)
 
     if output_file is None:
         base_filename, _ = os.path.splitext(episode_file)
-        output_file = base_filename + '.mp4'
+        output_file = base_filename + ".mp4"
 
     if temp_directory is None:
         base_filename, _ = os.path.splitext(os.path.basename(episode_file))
@@ -33,9 +34,9 @@ def render_video(episode_file: str, output_file: str = None, temp_directory: str
         scene_file = f"scene{scene_number}.mp4"
         scene_file_path = os.path.join(temp_directory, scene_file)
         if scene["type"] == "image":
-            #scene_duration = int(scene["content"]["duration"])
+            # scene_duration = int(scene["content"]["duration"])
 
-            #./ffmpeg -loop 1 -i .\episode1\image1.png -c:v libx264 -t 10 -pix_fmt yuv420p output.mp4
+            # ./ffmpeg -loop 1 -i .\episode1\image1.png -c:v libx264 -t 10 -pix_fmt yuv420p output.mp4
             cmd = (
                 FFmpeg()
                 .option("y")
@@ -51,7 +52,7 @@ def render_video(episode_file: str, output_file: str = None, temp_directory: str
                     },
                     ac=2,
                     ar=44100,
-                    #t=scene_duration,
+                    # t=scene_duration,
                     tune="stillimage",
                     pix_fmt="yuv420p",
                     vf="scale=" + video_resolution,
@@ -75,7 +76,7 @@ def render_video(episode_file: str, output_file: str = None, temp_directory: str
                     },
                     ac=2,
                     ar=44100,
-                    #t=scene_duration,
+                    # t=scene_duration,
                     pix_fmt="yuv420p",
                     vf="scale=" + video_resolution,
                     r=framerate,
@@ -109,9 +110,7 @@ def render_video(episode_file: str, output_file: str = None, temp_directory: str
     filter_complex += f" concat=n={len(scene_files)}:v=1:a=1 [v][a]"
 
     cmd = concat_cmd.output(
-        episode_silent_file,
-        filter_complex=filter_complex,
-        map=["[v]", "[a]"]
+        episode_silent_file, filter_complex=filter_complex, map=["[v]", "[a]"]
     )
 
     print(" ".join(cmd.arguments))
@@ -130,7 +129,7 @@ def render_video(episode_file: str, output_file: str = None, temp_directory: str
         overlay_file = overlay_file.replace("\\", "\\\\")
 
         text_filters += [
-            f"drawtext=textfile='{overlay_file}':x=(w-text_w)/2:y=h-80-text_h:fontcolor=white:fontsize=48:enable='between(t,{start},{end})':font=Times New Roman"
+            f"drawtext=textfile='{overlay_file}':x=(w-text_w)/2:y=h-80-text_h:fontcolor=white:fontsize=48:font=Times New Roman:alpha='if(lte(t,{start+1}), (t-{start})/{1}, if(gte(t,{end-1}), ({end}-t)/{1}, 1))'"
         ]
 
     kwargs = {}
@@ -145,13 +144,9 @@ def render_video(episode_file: str, output_file: str = None, temp_directory: str
         .input(episode_data["backgroundMusic"]["filename"], stream_loop=-1)
         .output(
             output_file,
-            {
-                "c:v": "libx264",
-                "c:a": "aac",
-                **kwargs
-            },
+            {"c:v": "libx264", "c:a": "aac", **kwargs},
             filter_complex=f"[1:a]volume={background_volume}[bga];[0:a][bga]amix=inputs=2:duration=longest",
-            shortest=None
+            shortest=None,
         )
     )
     print(" ".join(cmd.arguments))
@@ -160,11 +155,24 @@ def render_video(episode_file: str, output_file: str = None, temp_directory: str
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(description="Render a video from an episode file.")
 
-    parser.add_argument('episode_file', type=str, help="Path to the episode file.")
-    parser.add_argument('output_file', type=str, nargs='?', default=None, help="Path to the output file (optional).")
-    parser.add_argument('temp_directory', type=str, nargs='?', default=None, help="Path to the temporary directory (optional).")
+    parser.add_argument("episode_file", type=str, help="Path to the episode file.")
+    parser.add_argument(
+        "output_file",
+        type=str,
+        nargs="?",
+        default=None,
+        help="Path to the output file (optional).",
+    )
+    parser.add_argument(
+        "temp_directory",
+        type=str,
+        nargs="?",
+        default=None,
+        help="Path to the temporary directory (optional).",
+    )
 
     args = parser.parse_args()
     render_video(args.episode_file, args.output_file, args.temp_directory)
