@@ -7,6 +7,7 @@ import os
 video_resolution = "1920:1080"
 video_resolution = "1280:720"
 framerate = 25
+background_volume = 0.5
 
 
 def render_video(episode_file: str, output_file: str = None, temp_directory: str = None) -> None:
@@ -143,7 +144,7 @@ def render_video(episode_file: str, output_file: str = None, temp_directory: str
                 "c:a": "aac",
                 **kwargs
             },
-            filter_complex="[0:a][1:a]amix=inputs=2:duration=longest",
+            filter_complex=f"[1:a]volume={background_volume}[bga];[0:a][bga]amix=inputs=2:duration=longest",
             shortest=None
         )
     )
