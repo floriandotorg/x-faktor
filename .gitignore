@@ -5,6 +5,8 @@ background.mp3
 episode*.json
 episode*.mp4
 *.log
+false.mp3
+false.mp4
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
