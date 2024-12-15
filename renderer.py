@@ -124,7 +124,7 @@ def render_video(episode_file: str, output_file: str = None, temp_directory: str
         end = overlay["appearance"]["end"]
 
         text_filters += [
-            f"drawtext=text='{text}':x=(w-text_w)/2:y=h-40:fontcolor=white:fontsize=24:enable='between(t,{start},{end})'"
+            f"drawtext=text='{text}':x=(w-text_w)/2:y=40:fontcolor=white:fontsize=48:enable='between(t,{start},{end})'"
         ]
 
     kwargs = {}
