@@ -90,27 +90,29 @@ def render_video(episode_file: str, output_file: str = None, temp_directory: str
 
         scene_files += [scene_file]
 
-    scene_files_filename = os.path.join(temp_directory, "scene_files.txt")
-    with open(scene_files_filename, "w") as f:
-        f.writelines(f"file {scene_file}\n" for scene_file in scene_files)
-
     episode_silent_file = os.path.join(temp_directory, "episode_silent.mp4")
     # Combine scenes
-    # ffmpeg -f concat -i mylist.txt -c copy output.mp4
-    cmd = (
-        FFmpeg()
-        .option("y")
-        .option("f", "concat")
-        .input(scene_files_filename)
-        .output(
-            episode_silent_file,
-            {
-                "c:v": "copy",
-                "c:a": "aac"
-            },
-        #   c="copy"
-        )
+    # ffmpeg.exe -i scene0.mp4 -i scene2.mp4 -filter_complex "[0:v]scale=1024:576,setdar=16/9[v0];[1:v]scale=1024:576,setdar=16/9[v1];[v0][0:a][v1][1:a] concat=n=2:v=1:a=1 [v] [a]" -map "[v]" -map "[a]" output.mp4
+
+    concat_cmd = FFmpeg().option("y")
+    complex_filter = ""
+    merge_filter = ""
+    for i, scene_file in enumerate(scene_files):
+        scene_file = os.path.join(temp_directory, scene_file)
+        concat_cmd = concat_cmd.input(scene_file)
+
+        complex_filter += f"[{i}:v]scale={video_resolution},setdar=16/9[v{i}];"
+        merge_filter += f"[v{i}][{i}:a]"
+
+    complex_filter += merge_filter
+    complex_filter += f" concat=n={len(scene_files)}:v=1:a=1 [v][a]"
+
+    cmd = concat_cmd.output(
+        episode_silent_file,
+        filter_complex=complex_filter,
+        map=["[v]", "[a]"]
     )
+
     print(" ".join(cmd.arguments))
     cmd.execute()
 
