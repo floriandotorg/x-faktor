@@ -169,8 +169,9 @@ def render_video(
     total_duration = _length_of_media(episode_silent_file)
     fade_length = 1
 
+    kwargs = {}
     if text_filters:
-        text_filters = f"[in]{','.join(text_filters)}[out]"
+        kwargs["vf"] = f"[in]{','.join(text_filters)}[out]"
 
     # ffmpeg -i output.mp4 -i music.mp3 -stream_loop -1 -map 0:v -map 1:a -c:v copy -shortest final_output.mp4
     cmd = (
@@ -180,8 +181,7 @@ def render_video(
         .input(episode_data["backgroundMusic"]["filename"], stream_loop=-1)
         .output(
             output_file,
-            {"c:v": "libx264", "c:a": "aac"},
-            vf=f"fade=t=out:st={total_duration - fade_length}:d={fade_length}",
+            {"c:v": "libx264", "c:a": "aac", **kwargs},
             filter_complex=f"[1:a]volume={background_volume},afade=t=out:st={total_duration - fade_length}:d={fade_length}[bga];[0:a][bga]amix=inputs=2:duration=longest",
             shortest=None,
         )
