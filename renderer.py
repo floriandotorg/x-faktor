@@ -1,10 +1,17 @@
 import json
 import os
 
+from collections import namedtuple
+
 from ffmpeg import FFmpeg
 
-video_resolution = "1920:1080"
-video_resolution = "1280:720"
+
+Resolution = namedtuple("Resolution", ("width", "height"))
+Resolution.__str__ = lambda self: f"{self.width}x{self.height}"
+
+
+video_resolution = Resolution(1920, 1080)
+video_resolution = Resolution(1280, 720)
 framerate = 25
 background_volume = 0.5
 
@@ -40,6 +47,8 @@ def render_video(
 
     os.makedirs(temp_directory, exist_ok=True)
 
+    upscale_resolution = Resolution(*(x * 4 for x in video_resolution))
+
     for scene_number, scene in enumerate(episode_data["scenes"]):
         print(f"Generate Scene #{scene_number}")
 
@@ -74,7 +83,7 @@ def render_video(
                     # t=scene_duration,
                     tune="stillimage",
                     pix_fmt="yuv420p",
-                    vf=f"zoompan=z='zoom+{zoom_per_frame}':d={frame_count}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={video_resolution}",
+                    vf=f"scale={upscale_resolution},zoompan=z='zoom+{zoom_per_frame}':d={frame_count}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={video_resolution}",
                     r=framerate,
                     map=["0:v", "1:a"],
                     shortest=None,
