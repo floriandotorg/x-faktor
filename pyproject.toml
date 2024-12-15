@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "x-faktor"
+version = "0.1.0"
+description = ""
+authors = ["Florian Kaiser <mail@floriankaiser.org>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.13"
+replicate = "^1.0.4"
+python-dotenv = "^1.0.1"
+openai = "^1.57.4"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
