@@ -95,21 +95,21 @@ def render_video(episode_file: str, output_file: str = None, temp_directory: str
     # ffmpeg.exe -i scene0.mp4 -i scene2.mp4 -filter_complex "[0:v]scale=1024:576,setdar=16/9[v0];[1:v]scale=1024:576,setdar=16/9[v1];[v0][0:a][v1][1:a] concat=n=2:v=1:a=1 [v] [a]" -map "[v]" -map "[a]" output.mp4
 
     concat_cmd = FFmpeg().option("y")
-    complex_filter = ""
+    filter_complex = ""
     merge_filter = ""
     for i, scene_file in enumerate(scene_files):
         scene_file = os.path.join(temp_directory, scene_file)
         concat_cmd = concat_cmd.input(scene_file)
 
-        complex_filter += f"[{i}:v]scale={video_resolution},setdar=16/9[v{i}];"
+        filter_complex += f"[{i}:v]scale={video_resolution},setdar=16/9[v{i}];"
         merge_filter += f"[v{i}][{i}:a]"
 
-    complex_filter += merge_filter
-    complex_filter += f" concat=n={len(scene_files)}:v=1:a=1 [v][a]"
+    filter_complex += merge_filter
+    filter_complex += f" concat=n={len(scene_files)}:v=1:a=1 [v][a]"
 
     cmd = concat_cmd.output(
         episode_silent_file,
-        filter_complex=complex_filter,
+        filter_complex=filter_complex,
         map=["[v]", "[a]"]
     )
 
