@@ -66,10 +66,12 @@ def render_video(
 
         cmd = FFmpeg().option("y")
 
+        kwargs = {}
+
         if scene["type"] == "image":
             # scene_duration = int(scene["content"]["duration"])
 
-            frame_count = int(audio_duration * 25) + 1
+            frame_count = int(audio_duration * framerate) + 1
             zoom_level = 1.2
             zoom_per_frame = min(zoom_level / frame_count, 0.0001)
 
@@ -80,6 +82,8 @@ def render_video(
 
             # ./ffmpeg -loop 1 -i .\episode1\image1.png -c:v libx264 -t 10 -pix_fmt yuv420p output.mp4
             cmd = cmd.option("loop", 1)
+
+            kwargs["t"] = audio_duration
         elif scene["type"] == "video":
             video_duration = _length_of_media(scene_source_file)
             video_filter += [
@@ -109,6 +113,7 @@ def render_video(
                     "c:v": "libx264",
                     "c:a": "aac",
                     "b:a": "192k",
+                    **kwargs
                 },
                 ac=2,
                 ar=44100,
