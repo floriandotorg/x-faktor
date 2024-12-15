@@ -118,13 +118,19 @@ def render_video(episode_file: str, output_file: str = None, temp_directory: str
     cmd.execute()
 
     text_filters = []
-    for overlay in episode_data["textOverlays"]:
+    for overlay_index, overlay in enumerate(episode_data["textOverlays"]):
         text = overlay["text"]
         start = overlay["appearance"]["start"]
         end = overlay["appearance"]["end"]
 
+        overlay_file = os.path.join(temp_directory, f"overlay{overlay_index}.txt")
+        with open(overlay_file, "w") as f:
+            f.write(text)
+
+        overlay_file = overlay_file.replace("\\", "\\\\")
+
         text_filters += [
-            f"drawtext=text='{text}':x=(w-text_w)/2:y=40:fontcolor=white:fontsize=48:enable='between(t,{start},{end})':font=Times New Roman"
+            f"drawtext=textfile='{overlay_file}':x=(w-text_w)/2:y=h-80-text_h:fontcolor=white:fontsize=48:enable='between(t,{start},{end})':font=Times New Roman"
         ]
 
     kwargs = {}
