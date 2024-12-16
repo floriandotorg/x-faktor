@@ -1,9 +1,10 @@
 import json
 import os
+import asyncio
 
 from collections import namedtuple
 
-from ffmpeg import FFmpeg
+from ffmpeg.asyncio import FFmpeg
 
 
 Resolution = namedtuple("Resolution", ("width", "height"))
@@ -16,7 +17,7 @@ framerate = 25
 background_volume = 0.5
 
 
-def _length_of_media(media_file: str) -> float:
+async def _length_of_media(media_file: str) -> float:
     ffprobe = FFmpeg(executable="ffprobe").input(
         media_file,
         v="error",
@@ -25,43 +26,26 @@ def _length_of_media(media_file: str) -> float:
     )
 
     #print(" ".join(ffprobe.arguments))
-    duration = ffprobe.execute().decode("ASCII")
+    duration = (await ffprobe.execute()).decode("ASCII")
     return float(duration.rstrip())
 
 
-def render_video(
-    episode_file: str, output_file: str = None, temp_directory: str = None
-) -> None:
-    with open(episode_file, "r") as f:
-        episode_data = json.load(f)
+class SceneRenderer():
+    temp_directory: str
+    upscale_resolution: Resolution
 
-    if output_file is None:
-        base_filename, _ = os.path.splitext(episode_file)
-        output_file = base_filename + ".mp4"
+    def __init__(self, temp_directory: str, video_resolution: Resolution) -> None:
+        self.temp_directory = temp_directory
+        self.upscale_resolution = Resolution(*(x * 4 for x in video_resolution))
 
-    if temp_directory is None:
-        base_filename, _ = os.path.splitext(os.path.basename(episode_file))
-        temp_directory = f"generated-{base_filename}"
-
-    scene_files = []
-
-    os.makedirs(temp_directory, exist_ok=True)
-
-    upscale_resolution = Resolution(*(x * 4 for x in video_resolution))
-
-    fade_out = False
-    for scene in episode_data["scenes"]:
-        scene["fade_in"] = fade_out
-        fade_out = scene.setdefault("fade_out", False)
-
-    for scene_number, scene in enumerate(episode_data["scenes"]):
+    async def _render_scene(self, scene_number: int, scene) -> None:
         print(f"Generate Scene #{scene_number}")
 
         scene_source_file = scene["content"]["filename"]
         scene_audio_file = scene["content"]["audio"]["filename"]
         scene_file = f"scene{scene_number}.mp4"
-        scene_file_path = os.path.join(temp_directory, scene_file)
-        audio_duration = _length_of_media(scene_audio_file)
+        scene_file_path = os.path.join(self.temp_directory, scene_file)
+        audio_duration = await _length_of_media(scene_audio_file)
 
         fade_length = min(0.5, audio_duration / 3)
 
@@ -79,7 +63,7 @@ def render_video(
             zoom_per_frame = min(zoom_level / frame_count, 0.0001)
 
             video_filter += [
-                f"scale={upscale_resolution}",
+                f"scale={self.upscale_resolution}",
                 f"zoompan=z='zoom+{zoom_per_frame}':d={frame_count}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={video_resolution}"
             ]
 
@@ -88,7 +72,7 @@ def render_video(
 
             kwargs["t"] = audio_duration
         elif scene["type"] == "video":
-            video_duration = _length_of_media(scene_source_file)
+            video_duration = await _length_of_media(scene_source_file)
             video_filter += [
                 f"setpts=({audio_duration}/{video_duration})*PTS",
                 f"scale={video_resolution}"
@@ -128,9 +112,44 @@ def render_video(
         )
 
         print(" ".join(cmd.arguments))
-        cmd.execute()
+        await cmd.execute()
 
-        scene_files += [scene_file]
+    async def render_scenes(self, scenes) -> None:
+        async with asyncio.TaskGroup() as tasks:
+            for scene_number, scene in enumerate(scenes):
+                tasks.create_task(
+                    self._render_scene(scene_number, scene)
+                )
+
+
+async def render_video(
+    episode_file: str, output_file: str = None, temp_directory: str = None
+) -> None:
+    with open(episode_file, "r") as f:
+        episode_data = json.load(f)
+
+    if output_file is None:
+        base_filename, _ = os.path.splitext(episode_file)
+        output_file = base_filename + ".mp4"
+
+    if temp_directory is None:
+        base_filename, _ = os.path.splitext(os.path.basename(episode_file))
+        temp_directory = f"generated-{base_filename}"
+
+    os.makedirs(temp_directory, exist_ok=True)
+
+    scenes = episode_data["scenes"]
+
+    scene_files = []
+    fade_out = False
+    for scene_number, scene in enumerate(scenes):
+        scene_files += [f"scene{scene_number}.mp4"]
+
+        scene["fade_in"] = fade_out
+        fade_out = scene.setdefault("fade_out", False)
+
+    scene_renderer = SceneRenderer(temp_directory, video_resolution)
+    await scene_renderer.render_scenes(scenes)
 
     episode_silent_file = os.path.join(temp_directory, "episode_silent.mp4")
     # Combine scenes
@@ -154,7 +173,7 @@ def render_video(
     )
 
     print(" ".join(cmd.arguments))
-    cmd.execute()
+    await cmd.execute()
 
     text_filters = []
     for overlay_index, overlay in enumerate(episode_data["textOverlays"]):
@@ -172,7 +191,7 @@ def render_video(
             f"drawtext=textfile='{overlay_file}':x=(w-text_w)/2:y=h-80-text_h:fontcolor=white:fontsize=48:font=Times New Roman:alpha='if(lte(t,{start+1}), (t-{start})/{1}, if(gte(t,{end-1}), ({end}-t)/{1}, 1))'"
         ]
 
-    total_duration = _length_of_media(episode_silent_file)
+    total_duration = await _length_of_media(episode_silent_file)
     fade_length = 1
 
     kwargs = {}
@@ -193,10 +212,10 @@ def render_video(
         )
     )
     print(" ".join(cmd.arguments))
-    cmd.execute()
+    await cmd.execute()
 
 
-if __name__ == "__main__":
+async def _main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Render a video from an episode file.")
@@ -218,4 +237,8 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    render_video(args.episode_file, args.output_file, args.temp_directory)
+    await render_video(args.episode_file, args.output_file, args.temp_directory)
+
+
+if __name__ == "__main__":
+    asyncio.run(_main())
